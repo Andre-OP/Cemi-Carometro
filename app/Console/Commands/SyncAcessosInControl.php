@@ -8,6 +8,7 @@ use App\Models\AcessoLog;
 use Carbon\Carbon;
 use App\Enums\MovimentoEnum;
 use App\Enums\ResultadoEnum;
+use App\Models\Estudante;
 
 class SyncAcessosInControl extends Command
 {
@@ -117,6 +118,16 @@ class SyncAcessosInControl extends Command
                     2 => ResultadoEnum::ALARME,
                     default => ResultadoEnum::DESCONHECIDO,
                 };
+                $estudante = Estudante::where('matricula', $evento['matricula'])->first();
+
+                if(!$estudante && $evento['matricula'] && $evento['matricula'] !== '') {
+                    $this->warn("Aluno com matrícula {$evento['matricula']} não encontrado no banco. Criando novo registro...");
+                    $estudante = Estudante::create([
+                        'nome' => $evento['pessoa_nome'],
+                        'matricula' => $evento['matricula'],
+                        'ativo' => true,
+                    ]);
+                }
                 AcessoLog::updateOrCreate(
                     ['incontrol_id' => $evento['id']],
                     [
@@ -126,6 +137,7 @@ class SyncAcessosInControl extends Command
                         'maquina' => $evento['ponto_acesso_nome'] ?: 'Desconhecido',
                         'movimento' => $movimento,
                         'resultado' => $resultado,
+                        'aluno_id' => $estudante ? $estudante->id : null,
                     ]
                 );
             }
